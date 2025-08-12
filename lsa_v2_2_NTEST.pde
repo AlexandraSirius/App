@@ -1,4 +1,4 @@
-import controlP5.*;
+чimport controlP5.*;
 import processing.serial.*;
 
 ControlP5 cp5;
@@ -39,10 +39,6 @@ float squareSpacing;
 float[] squareX = new float[numSquares];
 int rtpIndex = 0, oscIndex = 0;
 
-String deviceIP = "";
-String deviceMAC = "";
-String deviceStatus = "";
-
 void settings() {
   size(800, 600);
 }
@@ -50,9 +46,6 @@ void settings() {
 void setup() {
   cp5 = new ControlP5(this);
   cp5.setFont(createFont("Arial", 16));
-  cp5.setColorForeground(color(110, 110, 110));
-  cp5.setColorBackground(color(255));          // фон — белый
-  cp5.setColorActive(color(0, 122, 255));       // фокус — синий
 
   for (int i = 0; i < 6; i++) {
     oscSaved[i] = "";
@@ -73,8 +66,6 @@ void setup() {
   mainMenu.addItem("NETWORK", 2);
   mainMenu.addItem("OSC", 3);
   mainMenu.bringToFront();
-  mainMenu.getCaptionLabel().setColor(color(110, 110, 110));
-  mainMenu.getValueLabel().setColor(color(110, 110, 110));
 
   midiSubList = cp5.addScrollableList("midiSubMenu")
     .setLabel("MIDI Mode").setPosition(260, 60).setSize(120, 90)
@@ -83,8 +74,6 @@ void setup() {
   midiSubList.addItem("MIDI", 0);
   midiSubList.addItem("MSC", 1);
   midiSubList.addItem("SYSEX MIDI", 2);
-  midiSubList.getCaptionLabel().setColor(color(110, 110, 110));
-  midiSubList.getValueLabel().setColor(color(110, 110, 110));
 
   int circleSize = 180;
   int spacing = 20;
@@ -187,8 +176,6 @@ void setup() {
     .setPosition(400, 60).setSize(80, 140)
     .setBarHeight(30).setItemHeight(30)
     .setLabel("Target").setOpen(false).hide();
-  rtpSelect.getCaptionLabel().setColor(color(110, 110, 110));
-  rtpSelect.getValueLabel().setColor(color(110, 110, 110));
 
   rtpSelect.addItem("—", -1);
   for (int t = 1; t <= 6; t++) {
@@ -214,9 +201,6 @@ void setup() {
     .setPosition(260, 60).setSize(80, 140)
     .setBarHeight(30).setItemHeight(30)
     .setLabel("Element").setOpen(false).hide();
-  oscSelect.getCaptionLabel().setColor(color(110, 110, 110));
-  oscSelect.getValueLabel().setColor(color(110, 110, 110));
-
   oscSelect.addItem("—", -1);
   for (int t = 1; t <= 6; t++) oscSelect.addItem(str(t), t);
   oscSelect.setBroadcast(false).setValue(-1).setBroadcast(true);
@@ -243,7 +227,7 @@ void setup() {
 }
 
 void draw() {
-  background(250, 249, 247); 
+  background(125);
   drawModeIndicator();
   if (!deviceConnected) {
     int elapsed = millis() - startTimer;
@@ -268,7 +252,7 @@ void draw() {
   }
 
   if (midiMode || oscMode) {
-    fill(110);
+    fill(0);
     ellipse(width/2, height/2, 150, 150);
 
     for (int i = 0; i < numSquares; i++) {
@@ -295,7 +279,7 @@ void draw() {
     stroke(0);
     rect(resultX - 10, resultY - 10, 300, max(40, testResults.length * 20 + 30));
 
-    fill(110);
+    fill(0);
     textSize(14);
     textAlign(LEFT, TOP);
     text("Ответ от устройства:", resultX, resultY);
@@ -315,17 +299,10 @@ void serialEvent(Serial p) {
     if (receivedData.equals("box")) {
       deviceConnected = true;
       println("Device connected!");
-     } else if (receivedData.startsWith("reply:")) {
-        deviceIP = receivedData.substring(6).trim();  
-        testResults = append(testResults, deviceIP); 
-        println("IP: " + deviceIP);
-      } else if (receivedData.startsWith("mac:")) {
-        deviceMAC = receivedData.substring(4).trim();
-        println("MAC: " + deviceMAC);
-      } else if (receivedData.startsWith("status:")) {
-        deviceStatus = receivedData.substring(7).trim();
-        println("Status: " + deviceStatus);
-      } else {
+    } else if (receivedData.startsWith("reply:")) {
+      testResults = append(testResults, receivedData.substring(6).trim());
+      println("Добавлен ответ: " + receivedData);
+    } else {
       println("Unknown response: " + receivedData);
     }
   } else {
@@ -374,7 +351,7 @@ void drawModeIndicator() {
   else if (networkMode) activeMode = "ACTIVE MODE: NETWORK";
   else if (oscMode) activeMode = "ACTIVE MODE: OSC";
 
-  fill(250, 249, 247);
+  fill(255);
   textSize(16);
   textAlign(LEFT, TOP);
   text(activeMode, 60, 30);
@@ -652,7 +629,6 @@ void saveRTP(int idx) {
 
     int idx = sel.intValue() - 1; // если прошивка ждёт 0..5
     // int idx = sel.intValue();  // если прошивка ждёт 1..6 — тогда убери -1 и поправь msg ниже
-
     if (oscField != null) {
       oscSaved[idx] = oscField.getText();
     }
@@ -663,8 +639,7 @@ void saveRTP(int idx) {
       return;
     }
 
-    // Отправляем только выбранный элемент
-    String msg = "osc" + (idx + 1) + "/" + payload + "\n";
+    String msg = "osc" + (idx + 1) + "/" + payload + "\n"; // (idx+1) если 1..6
     if (port != null) port.write(msg);
     println("Sent: " + msg.trim());
   }
