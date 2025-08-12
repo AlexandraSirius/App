@@ -644,14 +644,31 @@ void saveRTP(int idx) {
   }
 
   if (oscMode) {
-    for (int i = 0; i < 6; i++) {
-      if (oscSaved[i] != null && !oscSaved[i].trim().equals("")) {
-        String msg = "osc" + (i + 1) + "/" + oscSaved[i].trim() + "\n";
-        if (port != null) port.write(msg);
-        println("Sent: " + msg.trim());
-      }
+    Float sel = (oscSelect != null) ? oscSelect.getValue() : null;
+    if (sel == null || sel < 1 || sel > 6) {
+      println("OSC: элемент не выбран — отправка отменена.");
+      return;
     }
+
+    int idx = sel.intValue() - 1; // если прошивка ждёт 0..5
+    // int idx = sel.intValue();  // если прошивка ждёт 1..6 — тогда убери -1 и поправь msg ниже
+
+    if (oscField != null) {
+      oscSaved[idx] = oscField.getText();
+    }
+
+    String payload = (oscSaved[idx] != null) ? oscSaved[idx].trim() : "";
+    if (payload.isEmpty()) {
+      println("OSC: пустое сообщение — отправка отменена.");
+      return;
+    }
+
+    // Отправляем только выбранный элемент
+    String msg = "osc" + (idx + 1) + "/" + payload + "\n";
+    if (port != null) port.write(msg);
+    println("Sent: " + msg.trim());
   }
+
 
   if (networkMode) {
     String[] netVals = {
