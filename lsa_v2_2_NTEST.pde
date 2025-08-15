@@ -16,7 +16,7 @@ Button sendButton;
 
 String[] rtpSaved = new String[6];
 String[] oscSaved = new String[6];
-
+ScrollableList[][] midiLeft = new ScrollableList[3][3];
 boolean deviceConnected = false;
 String receivedData = "";
 int startTimer;
@@ -109,14 +109,26 @@ void setup() {
     for (int j = 0; j < 3; j++) {
       int x = startX_left + i * (fieldW + fieldGapX);
       int y = startY_left + j * (fieldH + fieldGapY);
-      midiFields[i][j] = cp5.addTextfield("midi_left_" + i + "_" + j)
+
+      midiLeft[i][j] = cp5.addScrollableList("midi_left_" + i + "_" + j)
         .setPosition(x, y)
-        .setSize(fieldW, fieldH)
-        .setAutoClear(false)
+        .setSize(fieldW, 120)   // ширина — как у msc, высота раскрытия — 120
+        .setBarHeight(30)
+        .setItemHeight(25)
         .setLabel("")
-        .hide();
+        .hide(); // по умолчанию скрыт
+
+      // Заполняем числами от 0 до 7
+      for (int val = 0; val <= 7; val++) {
+        midiLeft[i][j].addItem(str(val), val);
+      }
+
+      midiLeft[i][j].setValue(0);  // по умолчанию выбран «0»
+      midiLeft[i][j].close();      // и сразу закрыт
     }
   }
+
+
 
   int fieldGap = 5;
   for (int t = 0; t < 4; t++) {
@@ -443,13 +455,25 @@ void controlEvent(ControlEvent event) {
     midiSubList.bringToFront();
     mainMenu.bringToFront();
 
-    if (sub == 0) {
-      for (Textfield[] group : midiFields) {
-        for (Textfield tf : group) {
-          if (tf != null) tf.show();
+  if (sub == 0) {
+    // Показать 3×3 выпадающих списков слева (midiLeft)
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+        if (midiLeft[i][j] != null) {
+          midiLeft[i][j].show().bringToFront();
         }
       }
-    } else if (sub == 1) {
+    }
+
+    // Показать текстовые поля в квадратах 3–6
+    for (int i = 3; i < 7; i++) {
+      for (int j = 0; j < 3; j++) {
+        if (midiFields[i][j] != null) {
+          midiFields[i][j].show();
+        }
+      }
+    }
+  } else if (sub == 1) {
       for (ScrollableList s : mscList) {
         if (s != null) s.show();
       }
@@ -522,6 +546,14 @@ void controlEvent(ControlEvent event) {
   }
 }
 void hideAll() {
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      if (midiLeft[i][j] != null) midiLeft[i][j].hide();
+    }
+  }
+
+
   for (Textfield[] group : midiFields) {
     for (Textfield tf : group) {
       if (tf != null) tf.hide();
@@ -593,8 +625,14 @@ void saveRTP(int idx) {
       for (int i = 0; i < 7; i++) {
         StringBuilder sb = new StringBuilder("midi" + i);
         for (int j = 0; j < 3; j++) {
-          String val = midiFields[i][j].getText().trim();
-          sb.append(",").append(val);
+          Controller<?> ctrl = cp5.getController("midi_left_" + i + "_" + j);
+          if (ctrl instanceof ScrollableList) {
+            float selVal = ((ScrollableList) ctrl).getValue();
+            sb.append(",").append((int)selVal);
+          } else {
+            String val = midiFields[i][j].getText().trim();
+            sb.append(",").append(val);
+          }
         }
         String msg = sb.toString() + "\n";
         if (port != null) port.write(msg);
