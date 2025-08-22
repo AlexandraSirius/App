@@ -43,8 +43,73 @@ void settings() {
   size(800, 600);
 }
 
+// Унификация настроек прокручиваемых списков ControlP5
+
+// Для ScrollableList
+void tuneListSL(ScrollableList list, boolean open, int barH, int itemH, float sens) {
+  if (list == null) return;
+  list.setType(ScrollableList.LIST)   // постоянный «лист», а не выпадашка
+      .setOpen(open)                  // открыт — колесо/тачпад сразу работают
+      .setBarHeight(barH)
+      .setItemHeight(itemH);
+  // В некоторых версиях ControlP5 есть setScrollSensitivity
+  try {
+    list.setScrollSensitivity(sens);  // поставь -1, если прокрутка «вверх ногами»
+  } catch (Throwable ignore) {}
+}
+
+// Для DropdownList (у него нет setType/setScrollSensitivity)
+void tuneDrop(DropdownList list, boolean open, int barH, int itemH) {
+  if (list == null) return;
+  list.setOpen(open)
+      .setBarHeight(barH)
+      .setItemHeight(itemH);
+  // На случай перекрытий:
+  list.bringToFront();
+}
+
 void setup() {
+  final float SENS = 1;
   cp5 = new ControlP5(this);
+  cp5.addCallback(new CallbackListener() {
+    public void controlEvent(CallbackEvent e) {
+      if (e.isFrom(midiSubList)) {
+        midiSubList.setOpen(true);
+        midiSubList.bringToFront();
+      }
+
+      // Любой из списков в сетке midiLeft
+      for (int i = 0; i < midiLeft.length; i++) {
+        for (int j = 0; j < midiLeft[i].length; j++) {
+          if (midiLeft[i][j] != null && e.isFrom(midiLeft[i][j])) {
+            midiLeft[i][j].setOpen(true);
+            midiLeft[i][j].bringToFront();
+          }
+        }
+      }
+
+      // Любой из списков MSC
+      for (int k = 0; k < mscList.length; k++) {
+        if (mscList[k] != null && e.isFrom(mscList[k])) {
+          mscList[k].setOpen(true);
+          mscList[k].bringToFront();
+        }
+      }
+
+      final int a = e.getAction();
+      final Controller<?> c = e.getController();
+
+      // Курсор заходит в список — поднимаем его над остальными
+      if (a == ControlP5.ACTION_ENTER && c instanceof ScrollableList) {
+        ((ScrollableList)c).bringToFront();
+      }
+      // Ушли курсором — по желанию можно закрывать список
+      // if (a == ControlP5.ACTION_LEAVE && c instanceof ScrollableList) {
+      //   ((ScrollableList)c).setOpen(false);
+      // }
+    }
+  });
+
   cp5.setFont(createFont("Arial", 16));
 
   for (int i = 0; i < 6; i++) {
@@ -175,11 +240,6 @@ void setup() {
 
     // Замена onBlur на addCallback
     rtpMsgField[t].addCallback(new CallbackListener() {
-      public void controlEvent(CallbackEvent event) {
-        if (event.getAction() == ControlP5.ACTION_LEAVE) {
-          saveRTP(idx);
-        }
-      }
     }
     );
   }
@@ -302,6 +362,8 @@ void draw() {
   }
 
 }
+
+
 void serialEvent(Serial p) {
   receivedData = p.readStringUntil('\n');
   if (receivedData != null) {
