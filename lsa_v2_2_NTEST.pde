@@ -470,6 +470,23 @@ void controlEvent(ControlEvent event) {
       midiSubList.setBroadcast(false);
       midiSubList.setValue(0);
       midiSubList.setBroadcast(true);
+      for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+          if (midiLeft[i][j] != null) {
+            midiLeft[i][j].show().bringToFront();
+            midiLeft[i][j].close(); // стартуем закрытыми, как и поля
+          }
+        }
+      }
+
+      // 2) Текстовые поля в квадратах 3–6
+      for (int i = 3; i < 7; i++) {
+        for (int j = 0; j < 3; j++) {
+          if (midiFields[i][j] != null) {
+            midiFields[i][j].show();
+          }
+        }
+      }
       break;
     case 2:
       networkMode = true;
