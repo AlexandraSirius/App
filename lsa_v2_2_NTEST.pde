@@ -13,7 +13,6 @@ Textfield[] rtpMsgField = new Textfield[6];
 Textfield oscField;
 Textfield ipBox, portBox, ipOut1, ipOut2, portOut, netOscMsg;
 Button sendButton;
-
 String[] rtpSaved = new String[6];
 String[] oscSaved = new String[6];
 ScrollableList[][] midiLeft = new ScrollableList[3][3];
@@ -22,7 +21,7 @@ String receivedData = "";
 int startTimer;
 int scanInterval = 100;
 int currentPortIndex = 0;
-
+int midiLeftActiveRow = -1;
 Button testButton;
 String[] testResults = {};
 boolean showTestResults = false;
@@ -42,6 +41,52 @@ int rtpIndex = 0, oscIndex = 0;
 void settings() {
   size(800, 600);
 }
+void enforceSingleOpenMidiList() {
+  ScrollableList openOne = null;
+  int openRow = -1;
+
+  // Находим первый открытый список и закрываем все остальные
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      ScrollableList sl = midiLeft[i][j];
+      if (sl == null) continue;
+
+      if (sl.isOpen()) {
+        if (openOne == null) {
+          openOne = sl;
+          openRow = j;              // запоминаем РЯД открытого списка
+        } else {
+          sl.close();               // только один может быть открыт
+        }
+      }
+    }
+  }
+
+  // Если какой-то список открыт — СРАЗУ прячем все ряды ниже него
+  if (openOne != null) {
+    if (midiLeftActiveRow != openRow) {
+      for (int ii = 0; ii < 3; ii++) {
+        for (int jj = 0; jj < 3; jj++) {
+          if (midiLeft[ii][jj] == null) continue;
+          if (jj > openRow) midiLeft[ii][jj].hide();  // ниже — прячем
+          else              midiLeft[ii][jj].show();  // текущий и выше — показываем
+        }
+      }
+      midiLeftActiveRow = openRow;
+    }
+  } else {
+    // Никакой не открыт — вернуть всё, если было скрыто
+    if (midiLeftActiveRow != -1) {
+      for (int ii = 0; ii < 3; ii++) {
+        for (int jj = 0; jj < 3; jj++) {
+          if (midiLeft[ii][jj] != null) midiLeft[ii][jj].show();
+        }
+      }
+      midiLeftActiveRow = -1;
+    }
+  }
+}
+
 
 void setup() {
   cp5 = new ControlP5(this);
@@ -127,25 +172,8 @@ void setup() {
       midiLeft[i][j].close();      // и сразу закрыт
     }
   }
-  cp5.addCallback(new CallbackListener() {
-    public void controlEvent(CallbackEvent e) {
-      Controller c = e.getController();
-      if (c == null) return;
-      String name = c.getName();
 
-      // если кликнули на заголовок списка (попытка открыть)
-      if (name != null && name.startsWith("midi_left_") && e.getAction() == ControlP5.ACTION_PRESSED) {
-        for (int i = 0; i < 3; i++) {
-          for (int j = 0; j < 3; j++) {
-            ScrollableList sl = midiLeft[i][j];
-            if (sl != null && sl != c) {
-              sl.close();   // закрыть все остальные
-            }
-          }
-        }
-      }
-    }
-  });
+  
   int fieldGap = 5;
   for (int t = 0; t < 4; t++) {
     int fieldX = int(squareX[t]);
@@ -316,7 +344,16 @@ void draw() {
       text("- " + testResults[i], resultX, resultY + 20 + i * 20);
     }
   }
-
+  if (midiMode) {
+    int sub = 0;
+    if (midiSubList != null) {
+      // В ControlP5 getValue() — float; 0 = MIDI, 1 = MSC, 2 = RTP
+      sub = (int)midiSubList.getValue();
+    }
+    if (sub == 0) { // мы на странице "MIDI"
+      enforceSingleOpenMidiList();
+    }
+  }
 }
 void serialEvent(Serial p) {
   receivedData = p.readStringUntil('\n');
