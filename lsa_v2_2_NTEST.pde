@@ -44,8 +44,9 @@ void settings() {
 void enforceSingleOpenMidiList() {
   ScrollableList openOne = null;
   int openRow = -1;
+  int openCol = -1;
 
-  // Находим первый открытый список и закрываем все остальные
+  // Найдём единственный открытый список и его координаты (col,row)
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       ScrollableList sl = midiLeft[i][j];
@@ -54,40 +55,36 @@ void enforceSingleOpenMidiList() {
       if (sl.isOpen()) {
         if (openOne == null) {
           openOne = sl;
-          openRow = j;              // запоминаем РЯД открытого списка
+          openCol = i;   // столбец (0..2)
+          openRow = j;   // ряд (0..2)
         } else {
-          sl.close();               // только один может быть открыт
+          // не допускаем второго открытого
+          sl.close();
         }
       }
     }
   }
 
-  // Если какой-то список открыт — СРАЗУ прячем все ряды ниже него
   if (openOne != null) {
-    if (midiLeftActiveRow != openRow) {
-      for (int ii = 0; ii < 3; ii++) {
-        for (int jj = 0; jj < 3; jj++) {
-          if (midiLeft[ii][jj] == null) continue;
-          if (jj > openRow) midiLeft[ii][jj].hide();  // ниже — прячем
-          else              midiLeft[ii][jj].show();  // текущий и выше — показываем
-        }
+    // Показать всё как базу
+    for (int ii = 0; ii < 3; ii++) {
+      for (int jj = 0; jj < 3; jj++) {
+        if (midiLeft[ii][jj] != null) midiLeft[ii][jj].show();
       }
-      midiLeftActiveRow = openRow;
+    }
+    // Скрыть ТОЛЬКО элементы в том же столбце НИЖЕ открытого (пример: 1 → скрыть 4 и 7)
+    for (int jj = openRow + 1; jj < 3; jj++) {
+      if (midiLeft[openCol][jj] != null) midiLeft[openCol][jj].hide();
     }
   } else {
-    // Никакой не открыт — вернуть всё, если было скрыто
-    if (midiLeftActiveRow != -1) {
-      for (int ii = 0; ii < 3; ii++) {
-        for (int jj = 0; jj < 3; jj++) {
-          if (midiLeft[ii][jj] != null) midiLeft[ii][jj].show();
-        }
+    // Ничего не открыто — убедимся, что всё видно
+    for (int ii = 0; ii < 3; ii++) {
+      for (int jj = 0; jj < 3; jj++) {
+        if (midiLeft[ii][jj] != null) midiLeft[ii][jj].show();
       }
-      midiLeftActiveRow = -1;
     }
   }
 }
-
-
 void setup() {
   cp5 = new ControlP5(this);
   cp5.setFont(createFont("Arial", 16));
