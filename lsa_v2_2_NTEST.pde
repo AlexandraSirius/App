@@ -38,27 +38,28 @@ int squareY;
 float squareSpacing;
 float[] squareX = new float[numSquares];
 int rtpIndex = 0, oscIndex = 0;
+// Выпадающие списки справа от нижних квадратов (4 столбца × 3 строки)
+ScrollableList[][] midiSquareRight = new ScrollableList[4][3];
 
-ScrollableList[][] midiSquareRight = new ScrollableList[4][3]; // Выпадающие списки справа от нижних квадратов (4 столбца × 3 строки)
 void settings() {
   size(800, 600);
-}
-void enforceSingleOpenMidiList() {
-  ScrollableList openOne = null;
-  int openRow = -1;
-  int openCol = -1;
-  boolean openIsLeft = false; // true — открыт из верхней сетки midiLeft, false — из нижних midiSquareRight
 
-  // 1) ищем первый открытый в ЛЕВОЙ 3×3 сетке
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      ScrollableList sl = midiLeft[i][j];
-      if (sl == null) continue;
-      if (sl.isOpen()) {
+}void enforceSingleOpenMidiList() {
+  ScrollableList openOne = null;
+  int openRow = -1;         // 0..2
+  int openCol = -1;         // для midiLeft: 0..2, для midiSquareRight: 0..3
+  boolean openIsLeft = false; // где открыт: true = в midiLeft, false = в midiSquareRight
+
+  // === 1) Найти единственный ОТКРЫТЫЙ список среди ОБОИХ наборов и закрыть лишние ===
+  // 1.1 Верхняя 3x3 (midiLeft)
+  for (int c = 0; c < 3; c++) {
+    for (int r = 0; r < 3; r++) {
+      ScrollableList sl = (midiLeft[c][r] != null) ? midiLeft[c][r] : null;
+      if (sl != null && sl.isOpen()) {
         if (openOne == null) {
           openOne = sl;
-          openCol = i;
-          openRow = j;
+          openCol = c;
+          openRow = r;
           openIsLeft = true;
         } else {
           sl.close();
@@ -66,15 +67,15 @@ void enforceSingleOpenMidiList() {
       }
     }
   }
-
-  // 2) ищем открытые среди нижних списков (4×3) и закрываем «лишние»
-  for (int t = 0; t < 4; t++) {
-    for (int j = 0; j < 3; j++) {
-      ScrollableList sl = midiSquareRight[t][j];
-      if (sl == null) continue;
-      if (sl.isOpen()) {
+  // 1.2 Правые у квадрата 4x3 (midiSquareRight)
+  for (int c = 0; c < 4; c++) {
+    for (int r = 0; r < 3; r++) {
+      ScrollableList sl = (midiSquareRight[c][r] != null) ? midiSquareRight[c][r] : null;
+      if (sl != null && sl.isOpen()) {
         if (openOne == null) {
           openOne = sl;
+          openCol = c;
+          openRow = r;
           openIsLeft = false;
         } else {
           sl.close();
@@ -83,22 +84,31 @@ void enforceSingleOpenMidiList() {
     }
   }
 
-  // 3) визуальная логика
-  if (openOne != null) {
-    // базово показать все верхние списки
-    for (int ii = 0; ii < 3; ii++) {
-      for (int jj = 0; jj < 3; jj++) {
-        if (midiLeft[ii][jj] != null) midiLeft[ii][jj].show();
-      }
+  // === 2) База: всё показать (ничего не открыто — всё видно) ===
+  for (int c = 0; c < 3; c++) {
+    for (int r = 0; r < 3; r++) {
+      if (midiLeft[c][r] != null) midiLeft[c][r].show();
     }
+  }
+  for (int c = 0; c < 4; c++) {
+    for (int r = 0; r < 3; r++) {
+      if (midiSquareRight[c][r] != null) midiSquareRight[c][r].show();
+    }
+  }
+  for (int r = 0; r < 3; r++) {
+    for (int k = 0; k < 3; k++) {
+      if (midiInline[r][k] != null) midiInline[r][k].show();
+    }
+  }
 
+  // === 3) «Лесенка»: прячем ТОЛЬКО элементы ниже в том же столбце ===
+  if (openOne != null) {
     if (openIsLeft) {
-      // если открыт верхний — прячем НИЖЕ в той же колонке (твоя прежняя логика)
-      for (int jj = openRow + 1; jj < 3; jj++) {
-        if (midiLeft[openCol][jj] != null) midiLeft[openCol][jj].hide();
+      // Открыт список в верхней 3x3 — прячем НИЖЕ в этом же столбце верхней сетки
+      for (int r = openRow + 1; r < 3; r++) {
+        if (midiLeft[openCol][r] != null) midiLeft[openCol][r].hide();
       }
-
-      // обновляем видимость межколоночных полей по строкам
+      // Пересчитать видимость inline-полей построчно (как у тебя было)
       for (int row = 0; row < 3; row++) {
         boolean rowVisible = false;
         for (int col = 0; col < 3; col++) {
@@ -114,40 +124,18 @@ void enforceSingleOpenMidiList() {
           }
         }
       }
-
-      // (опционально) при открытии верхнего закрыть ВСЕ нижние, чтобы не мешали
-      for (int t = 0; t < 4; t++) {
-        for (int j = 0; j < 3; j++) {
-          if (midiSquareRight[t][j] != null) midiSquareRight[t][j].close();
-        }
-      }
+      // Никаких действий с midiSquareRight тут не требуется — у тебя «лесенка» нужна ровно в той сетке, где открыт список.
 
     } else {
-      // открыт один из нижних — верхние ничего не скрываем
-      // (если хочется — можно тут закрывать все верхние)
-      // for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) if (midiLeft[i][j] != null) midiLeft[i][j].close();
-
-      // межколоночные поля показываем (не скрываем строки)
-      for (int row = 0; row < 3; row++) {
-        for (int k = 0; k < 3; k++) {
-          if (midiInline[row][k] != null) midiInline[row][k].show();
-        }
+      // Открыт список у квадрата (правые 4x3) — прячем НИЖЕ в этом же столбце квадратной сетки
+      for (int r = openRow + 1; r < 3; r++) {
+        if (midiSquareRight[openCol][r] != null) midiSquareRight[openCol][r].hide();
       }
-    }
-  } else {
-    // ничего не открыто — всё видно
-    for (int ii = 0; ii < 3; ii++) {
-      for (int jj = 0; jj < 3; jj++) {
-        if (midiLeft[ii][jj] != null) midiLeft[ii][jj].show();
-      }
-    }
-    for (int row = 0; row < 3; row++) {
-      for (int k = 0; k < 3; k++) {
-        if (midiInline[row][k] != null) midiInline[row][k].show();
-      }
+      // inline-поля не затрагиваем, т.к. они логически связаны с верхней 3x3.
     }
   }
 }
+
 void setup() {
   cp5 = new ControlP5(this);
   cp5.setFont(createFont("Arial", 16));
@@ -291,7 +279,7 @@ void setup() {
         .hide();
     }
   }
-  // === ПРАВЫЕ выпадающие списки возле правой линии каждого квадрата ===
+
   int sqDDWidth   = 40;   // ширина бара списка
   int sqDDBarH    = 30;   // высота бара (как у остальных)
   int sqDDItemH   = 25;   // высота пункта
@@ -299,7 +287,7 @@ void setup() {
 
   for (int t = 0; t < 4; t++) {                  // по каждому квадрату (столбцу)
     int rightLineX = int(squareX[t] + squareSize);
-    int ddX = rightLineX - sqDDWidth; 
+    int ddX = rightLineX - sqDDOffsetX - sqDDWidth;
 
     for (int j = 0; j < 3; j++) {                // по каждой строке/полю (3 на столбец)
       int ddY = int(squareY + j * (fieldH + fieldGap));
@@ -780,11 +768,7 @@ void hideAll() {
       if (midiInline[row][k] != null) midiInline[row][k].hide();
     }
   }
-  for (int t = 0; t < 4; t++) {
-    for (int j = 0; j < 3; j++) {
-      if (midiSquareRight[t][j] != null) midiSquareRight[t][j].hide();
-    }
-  }
+
 
   for (Textfield[] group : midiFields) {
     for (Textfield tf : group) {
@@ -794,6 +778,12 @@ void hideAll() {
   for (ScrollableList s : mscList) {
     if (s != null) s.hide();
   }
+  for (int t = 0; t < 4; t++) {
+    for (int j = 0; j < 3; j++) {
+      if (midiSquareRight[t][j] != null) midiSquareRight[t][j].hide();
+    }
+  }
+
   for (Textfield f : rtpMsgField) {
     if (f != null) f.hide();
   }
@@ -867,6 +857,21 @@ void saveRTP(int idx) {
         String msgI = sbI.toString() + "\n";
         if (port != null) port.write(msgI);
         println("Sent: " + msgI.trim());
+      }
+      // === ДОБАВЛЕНО: отправка ПРАВЫХ выпадающих списков возле квадратов ===
+      // Формат: "midiSqR{t},v0,v1,v2" для t = 0..3
+      for (int t = 0; t < 4; t++) {
+        StringBuilder sbR = new StringBuilder("midiSqR" + t);
+        for (int j = 0; j < 3; j++) {
+          int v = 0;
+          if (midiSquareRight[t][j] != null) {
+            v = (int) midiSquareRight[t][j].getValue(); // getValue() -> float, приводим к int
+          }
+          sbR.append(",").append(v);
+        }
+        String msgR = sbR.toString() + "\n";
+        if (port != null) port.write(msgR);
+        println("Sent: " + msgR.trim());
       }
 
       for (int i = 0; i < 7; i++) {
