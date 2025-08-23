@@ -1,45 +1,72 @@
-import controlP5.*;
-import processing.serial.*;
+import controlP5.*;      // библиотека для GUI-элементов (кнопки, списки, поля)
+import processing.serial.*; // библиотека для работы с Serial (COM-порт)
 
-ControlP5 cp5;
-Serial port;
-
-ScrollableList mainMenu, midiSubList, netModeList;
-DropdownList rtpSelect, oscSelect;
-ColorWheel picker1, picker2, picker3, picker4;
-Textfield[][] midiFields = new Textfield[7][3];
-Textfield[][] midiInline = new Textfield[3][3]; // поля между выпадающими списками MIDI (по 3 на строку)
-ScrollableList[] mscList = new ScrollableList[4];
-Textfield[] rtpMsgField = new Textfield[6];
-Textfield oscField;
-Textfield ipBox, portBox, ipOut1, ipOut2, portOut, netOscMsg;
-Button sendButton;
-String[] rtpSaved = new String[6];
-String[] oscSaved = new String[6];
-ScrollableList[][] midiLeft = new ScrollableList[3][3];
-boolean deviceConnected = false;
-String receivedData = "";
-int startTimer;
-int scanInterval = 100;
-int currentPortIndex = 0;
-int midiLeftActiveRow = -1;
-Button testButton;
-String[] testResults = {};
-boolean showTestResults = false;
-
-boolean colorMode = false;
-boolean midiMode = false;
+ControlP5 cp5;           // главный объект ControlP5, через него создаются все контролы
+Serial port;             // объект Serial для подключения и отправки/приёма данных
+// --- Основные меню ---
+ScrollableList mainMenu, midiSubList, netModeList; 
+// главные выпадающие списки: главное меню, подменю MIDI, выбор сетевого режима
+DropdownList rtpSelect, oscSelect; 
+// выпадающие для выбора сохранённых RTP и OSC конфигураций
+ColorWheel picker1, picker2, picker3, picker4; 
+// четыре цветовых колеса (например, для настройки цвета квадратов)
+Textfield[][] midiFields = new Textfield[7][3]; 
+// поля ввода для строк "MIDI MIDI" (всего 7 строк × 3 колонки)
+Textfield[][] midiInline = new Textfield[3][3]; 
+// маленькие поля ввода, которые стоят ПО МЕЖДУ 3×3 выпадающими списками MIDI (по 3 на строку)
+ScrollableList[] mscList = new ScrollableList[4]; 
+// отдельные списки (например, для выбора MSC-сообщений), всего 4
+Textfield[] rtpMsgField = new Textfield[6]; 
+// поля для ввода 6 RTP-сообщений
+Textfield oscField; 
+// поле для ввода OSC-сообщения
+// --- Сетевые поля ---
+Textfield ipBox, portBox, ipOut1, ipOut2, portOut, netOscMsg; 
+// ipBox/portBox – ввод IP и порта для входа
+// ipOut1, ipOut2, portOut – для адреса и порта выхода
+// netOscMsg – поле для OSC-сообщения
+Button sendButton;       
+// кнопка отправки (send)
+String[] rtpSaved = new String[6]; 
+String[] oscSaved = new String[6]; 
+// массивы для хранения сохранённых RTP/OSC строк (по 6 штук)
+ScrollableList[][] midiLeft = new ScrollableList[3][3]; 
+// 3×3 выпадающих списков слева (верхняя таблица MIDI)
+boolean deviceConnected = false; 
+// флаг: есть ли подключённое устройство по Serial
+String receivedData = ""; 
+// буфер для принятой по Serial строки
+int startTimer;          
+int scanInterval = 100;  
+// переменные для таймера авто-сканирования портов (каждые 100 мс)
+int currentPortIndex = 0; 
+// индекс текущего COM-порта при переборе
+int midiLeftActiveRow = -1; 
+// какая строка у midiLeft активна (-1 = никакая)
+Button testButton;       
+// тестовая кнопка (для отладки)
+String[] testResults = {}; 
+boolean showTestResults = false; 
+// массив с результатами тестов + флаг, показывать ли их на экране
+// --- Режимы интерфейса ---
+boolean colorMode = false;  
+boolean midiMode = false;   
 boolean networkMode = false;
-boolean oscMode = false;
+boolean oscMode = false;    
+// переключатели текущего режима (цвета / MIDI / сеть / OSC)
+int squareSize = 100;      
+int numSquares = 4;        
+int squareY;               
+float squareSpacing;       
+float[] squareX = new float[numSquares]; 
+// параметры для рисования 4 квадратов снизу (размер, позиции по X и Y)
 
-int squareSize = 100;
-int numSquares = 4;
-int squareY;
-float squareSpacing;
-float[] squareX = new float[numSquares];
-int rtpIndex = 0, oscIndex = 0;
-// Выпадающие списки справа от нижних квадратов (4 столбца × 3 строки)
-ScrollableList[][] midiSquareRight = new ScrollableList[4][3];
+int rtpIndex = 0, oscIndex = 0; 
+// текущие индексы выбранных RTP и OSC конфигураций
+
+// Выпадающие списки справа от нижних квадратов (4 колонки × 3 строки)
+ScrollableList[][] midiSquareRight = new ScrollableList[4][3]; 
+
 
 void settings() {
   size(800, 600);
