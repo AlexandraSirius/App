@@ -8,6 +8,7 @@ ScrollableList mainMenu, midiSubList, netModeList;
 DropdownList rtpSelect, oscSelect;
 ColorWheel picker1, picker2, picker3, picker4;
 Textfield[][] midiFields = new Textfield[7][3];
+Textfield[][] midiInline = new Textfield[3][3]; // поля между выпадающими списками MIDI (по 3 на строку)
 ScrollableList[] mscList = new ScrollableList[4];
 Textfield[] rtpMsgField = new Textfield[6];
 Textfield oscField;
@@ -76,6 +77,22 @@ void enforceSingleOpenMidiList() {
     for (int jj = openRow + 1; jj < 3; jj++) {
       if (midiLeft[openCol][jj] != null) midiLeft[openCol][jj].hide();
     }
+   // Показать/скрыть поля по строкам: если вся строка скрыта — прячем и поля
+    for (int row = 0; row < 3; row++) {
+    boolean rowVisible = false;
+    for (int col = 0; col < 3; col++) {
+      if (midiLeft[col][row] != null && midiLeft[col][row].isVisible()) {
+        rowVisible = true;
+        break;
+      }
+    }
+    for (int k = 0; k < 3; k++) {
+      if (midiInline[row][k] != null) {
+        if (rowVisible) midiInline[row][k].show();
+        else            midiInline[row][k].hide();
+      }
+    }
+  }
   } else {
     // Ничего не открыто — убедимся, что всё видно
     for (int ii = 0; ii < 3; ii++) {
@@ -83,6 +100,11 @@ void enforceSingleOpenMidiList() {
         if (midiLeft[ii][jj] != null) midiLeft[ii][jj].show();
       }
     }
+    for (int row = 0; row < 3; row++) {
+    for (int k = 0; k < 3; k++) {
+      if (midiInline[row][k] != null) midiInline[row][k].show();
+    }
+  }
   }
 }
 void setup() {
@@ -139,12 +161,13 @@ void setup() {
   int fieldH = 30;
   int centerX = width / 2;
   int centerY = height / 2;
-  int fieldGapX = 20;
-  int fieldGapY = 10;
-
+  int fieldGapX = fieldW;  // было 20
+  int fieldGapY = 12;
   int totalWidth = 3 * fieldW + 2 * fieldGapX;
   int totalHeight = 3 * fieldH + 2 * fieldGapY;
-  int startX_left = centerX - totalWidth / 2;
+  int gridShiftLeft = 20;                     // ← на сколько пикселей сдвинуть влево (поставь своё число)
+  int startX_left   = centerX - totalWidth / 2 - gridShiftLeft;
+
   int startY_left = centerY - totalHeight / 2;
 
   for (int i = 0; i < 3; i++) {
@@ -168,6 +191,47 @@ void setup() {
       midiLeft[i][j].setValue(0);  // по умолчанию выбран «0»
       midiLeft[i][j].close();      // и сразу закрыт
     }
+  }
+  int rows = 3;
+  int cols = 3;
+
+  // уменьшаем «квадратик» до 80% и центрируем по X/Y в пролёте и строке
+  int inputW = int(min(fieldW, fieldGapX) * 0.7); // ← уже уже (поставь свой коэффициент)
+  int inputH = fieldH;                             // ← высота как у списка (не уменьшаем)
+  int inputOffsetX = (fieldGapX - inputW) / 2;
+  int inputOffsetY = 0;                            // ← по вертикали без смещения
+
+
+  for (int row = 0; row < rows; row++) {
+    int y = startY_left + row * (fieldH + fieldGapY);
+
+    int x0 = startX_left + 0 * (fieldW + fieldGapX);
+    int x1 = startX_left + 1 * (fieldW + fieldGapX);
+    int x2 = startX_left + 2 * (fieldW + fieldGapX);
+
+    // между колонками 0 и 1
+    midiInline[row][0] = cp5.addTextfield("midi_inline_" + row + "_0")
+      .setPosition(x0 + fieldW + inputOffsetX, y + inputOffsetY)
+      .setSize(inputW, inputH)
+      .setAutoClear(false)
+      .setCaptionLabel("")
+      .hide();
+
+    // между колонками 1 и 2
+    midiInline[row][1] = cp5.addTextfield("midi_inline_" + row + "_1")
+      .setPosition(x1 + fieldW + inputOffsetX, y + inputOffsetY)
+      .setSize(inputW, inputH)
+      .setAutoClear(false)
+      .setCaptionLabel("")
+      .hide();
+
+    // правый «боковой» за 3-й колонкой
+    midiInline[row][2] = cp5.addTextfield("midi_inline_" + row + "_2")
+      .setPosition(x2 + fieldW + inputOffsetX, y + inputOffsetY)
+      .setSize(inputW, inputH)
+      .setAutoClear(false)
+      .setCaptionLabel("")
+      .hide();
   }
 
   
@@ -531,7 +595,12 @@ void controlEvent(ControlEvent event) {
         }
       }
     }
-
+    // Показать межколоночные поля (и правое боковое)
+    for (int row = 0; row < 3; row++) {
+      for (int k = 0; k < 3; k++) {
+        if (midiInline[row][k] != null) midiInline[row][k].show().bringToFront();
+      }
+    }
     // Показать текстовые поля в квадратах 3–6
     for (int i = 3; i < 7; i++) {
       for (int j = 0; j < 3; j++) {
@@ -618,6 +687,11 @@ void hideAll() {
       if (midiLeft[i][j] != null) midiLeft[i][j].hide();
     }
   }
+  for (int row = 0; row < 3; row++) {
+    for (int k = 0; k < 3; k++) {
+      if (midiInline[row][k] != null) midiInline[row][k].hide();
+    }
+  }
 
 
   for (Textfield[] group : midiFields) {
@@ -688,6 +762,21 @@ void saveRTP(int idx) {
     int midiSub = (int) midiSubList.getValue();
 
     if (midiSub == 0) {
+      // === ДОБАВЛЕНО: отправка полей между списками (midiInline) построчно
+      // ПРИНЯТЬ К ВНИМАНИЮ И СКАЗАТЬ МНЕ КАК ТОЧНО НУЖНО ОТПРАВЛЯТЬ ДАННЫЕ С  ПОЛЕЙ ДЛЯ ВВОДА в MIDI MIDI===
+      // Формат: "midiInline0,a,b,c", "midiInline1,a,b,c", "midiInline2,a,b,c"
+      for (int row = 0; row < 3; row++) {
+        StringBuilder sbI = new StringBuilder("midiInline" + row);
+        for (int k = 0; k < 3; k++) {
+          String val = (midiInline[row][k] != null) ? midiInline[row][k].getText().trim() : "";
+          if (val.isEmpty()) val = "0";  // дефолт, чтобы не отправлять пустое
+          sbI.append(",").append(val);
+        }
+        String msgI = sbI.toString() + "\n";
+        if (port != null) port.write(msgI);
+        println("Sent: " + msgI.trim());
+      }
+
       for (int i = 0; i < 7; i++) {
         StringBuilder sb = new StringBuilder("midi" + i);
         for (int j = 0; j < 3; j++) {
