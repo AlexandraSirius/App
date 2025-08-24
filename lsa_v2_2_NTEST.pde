@@ -415,9 +415,13 @@ void setup() {
   portOut = cp5.addTextfield("portOut").setPosition(60, 280).setSize(150, 30).setLabel("Port Out").hide();
   netOscMsg = cp5.addTextfield("oscMsgNet").setPosition(220, 280).setSize(150, 30).setLabel("PASSCODE").hide();
 
-
   //sendButton = cp5.addButton("send").setPosition(700, 520).setSize(80, 30).setLabel("Send");
   sendButton = cp5.addButton("send").setPosition(width - 100, 20).setSize(80, 30).setLabel("Send");
+  sendButton.setLock(true);
+  int sendActive = color(0, 160, 0);   // зелёный активный
+  int sendInactive = color(120);       // серый неактивный
+  sendButton.setColorBackground(sendInactive);
+  sendButton.setColorForeground(sendInactive);
 
   testButton = cp5.addButton("testNetwork")
     .setLabel("TEST")
@@ -426,22 +430,26 @@ void setup() {
     .hide();  
 
   startAutomaticPortScan();
-  sendButton.hide();
 }
 
 void draw() {
   background(125);
   drawModeIndicator();
+  if (deviceConnected && port == null) {
+    onDeviceDisconnected();
+  }
   if (!deviceConnected) {
     int elapsed = millis() - startTimer;
     if (elapsed > scanInterval) {
       connectToNextPort();
       startTimer = millis();
     }
+    // ДЕРЖИМ кнопку залоченной, если устройство не подключено
+    if (sendButton != null && !sendButton.isLock()) sendButton.setLock(true);
   } else {
-    sendButton.show(); // устройство подключено — показать кнопку
+    // РАЗЛОЧИВАЕМ только когда реально подключены
+    if (sendButton != null && sendButton.isLock()) sendButton.setLock(false);
   }
-
   if (colorMode) {
     picker1.show();
     picker2.show();
@@ -510,6 +518,7 @@ void serialEvent(Serial p) {
 
     if (receivedData.equals("box")) {
       deviceConnected = true;
+      if (sendButton != null) sendButton.setLock(false); // добавьте ЭТУ строку
       println("Device connected!");
     } else if (receivedData.startsWith("reply:")) {
       testResults = append(testResults, receivedData.substring(6).trim());
@@ -545,7 +554,7 @@ void connectToNextPort() {
     println("Пробуем порт: " + ports[currentPortIndex]);
     port = new Serial(this, ports[currentPortIndex], 9600);
     port.bufferUntil('\n');
-    port.write("who\n");
+    safeWrite("who\n");
     currentPortIndex = (currentPortIndex + 1) % ports.length;
   }
   catch (Exception e) {
@@ -773,14 +782,13 @@ void controlEvent(ControlEvent event) {
     mainMenu.bringToFront();
   }
   if (event.isController() && event.getController().getName().equals("send")) {
+    if (!deviceConnected) return; // защита от клика без устройства
     sendParameters();
   }
   if (event.isController() && event.getController().getName().equals("testNetwork")) {
-  if (port != null) {
-    port.write("test\n");  // отправка команды на устройство
-  }
-  testResults = new String[0];  // очистка старого списка
-  showTestResults = true;
+    safeWrite("test\n"); 
+    testResults = new String[0];  // очистка старого списка
+    showTestResults = true;
   }
 }
 void hideAll() {
@@ -827,6 +835,31 @@ void hideAll() {
 
 }
 
+void onDeviceDisconnected() {
+  deviceConnected = false;
+  // аккуратно закрыть порт
+  if (port != null) {
+    try { port.stop(); } catch (Exception e) {}
+    port = null;
+  }
+  // залочить кнопку и заново запустить автопоиск
+  if (sendButton != null) sendButton.setLock(true);
+  startAutomaticPortScan(); // включает цикл сканирования в draw()
+}
+
+boolean safeWrite(String msg) {
+  try {
+    if (port != null) {
+      port.write(msg);
+      return true;
+    }
+  } catch (Exception e) {
+    println("Serial write failed: " + e.getMessage());
+    onDeviceDisconnected(); // сразу в поиск
+  }
+  return false;
+}
+
 void showNetwork() {
   if (ipBox != null) ipBox.show();
   if (portBox != null) portBox.show();
@@ -862,9 +895,10 @@ void saveRTP(int idx) {
       println("Saved RTP " + idx + ": " + currentValue);
     }
   }
-}void sendParameters() {
+}
+void sendParameters() {
   if (colorMode) {
-    if (port != null) port.write("eewr\n");
+    safeWrite("eewr\n");
   }
 
   if (midiMode) {
@@ -882,7 +916,7 @@ void saveRTP(int idx) {
           sbI.append(",").append(val);
         }
         String msgI = sbI.toString() + "\n";
-        if (port != null) port.write(msgI);
+        safeWrite(msgI);
         println("Sent: " + msgI.trim());
       }
       // === ДОБАВЛЕНО: отправка ПРАВЫХ выпадающих списков возле квадратов ===
@@ -897,7 +931,7 @@ void saveRTP(int idx) {
           sbR.append(",").append(v);
         }
         String msgR = sbR.toString() + "\n";
-        if (port != null) port.write(msgR);
+        safeWrite(msgR);
         println("Sent: " + msgR.trim());
       }
 
@@ -914,7 +948,7 @@ void saveRTP(int idx) {
           }
         }
         String msg = sb.toString() + "\n";
-        if (port != null) port.write(msg);
+        safeWrite(msg);
         println("Sent: " + msg.trim());
       }
 
@@ -923,7 +957,7 @@ void saveRTP(int idx) {
         if (mscList[i] != null) {
           int val = (int) mscList[i].getValue();
           String msg = "midimsc" + i + "," + val + "\n";
-          if (port != null) port.write(msg);
+          safeWrite(msg);
           println("Sent: " + msg.trim());
         }
       }
@@ -931,7 +965,7 @@ void saveRTP(int idx) {
     } else if (midiSub == 2) {
       if (rtpSaved[rtpIndex] != null && !rtpSaved[rtpIndex].trim().equals("")) {
         String msg = "rtp" + (rtpIndex + 1) + "," + rtpSaved[rtpIndex].trim() + "\n";
-        if (port != null) port.write(msg);
+        safeWrite(msg);
         println("Sent: " + msg.trim());
       }
     }
@@ -957,7 +991,7 @@ void saveRTP(int idx) {
     }
 
     String msg = "osc" + (idx + 1) + "/" + payload + "\n"; // (idx+1) если 1..6
-    if (port != null) port.write(msg);
+    safeWrite(msg);
     println("Sent: " + msg.trim());
   }
 
@@ -975,7 +1009,7 @@ void saveRTP(int idx) {
     for (int i = 0; i < netVals.length; i++) {
       if (!netVals[i].trim().equals("")) {
         String msg = "me_set" + i + "," + netVals[i].trim() + "\n";
-        if (port != null) port.write(msg);
+        safeWrite(msg);
         println("Sent: " + msg.trim());
       }
     }
@@ -984,24 +1018,24 @@ void saveRTP(int idx) {
 
 void p1(int col) {
   String str = "b0," + int(red(col)) + "," + int(green(col)) + "," + int(blue(col)) + "\n";
-  if (port != null) port.write(str);
+  safeWrite(str);
   println(int(red(col)) + ":" + int(green(col)) + ":" + int(blue(col)));
 }
 
 void p2(int col) {
   String str = "b1," + int(red(col)) + "," + int(green(col)) + "," + int(blue(col)) + "\n";
-  if (port != null) port.write(str);
+  safeWrite(str);
   println(int(red(col)) + ":" + int(green(col)) + ":" + int(blue(col)));
 }
 
 void p3(int col) {
   String str = "b2," + int(red(col)) + "," + int(green(col)) + "," + int(blue(col)) + "\n";
-  if (port != null) port.write(str);
+  safeWrite(str);
   println(int(red(col)) + ":" + int(green(col)) + ":" + int(blue(col)));
 }
 
 void p4(int col) {
   String str = "b3," + int(red(col)) + "," + int(green(col)) + "," + int(blue(col)) + "\n";
-  if (port != null) port.write(str);
+  safeWrite(str);
   println(int(red(col)) + ":" + int(green(col)) + ":" + int(blue(col)));
 }
