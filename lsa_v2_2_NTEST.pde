@@ -265,7 +265,7 @@ void setup() {
     int fieldX = int(squareX[t]);
     int startYf = int(squareY);
   
-    for (int j = 0; j < 1; j++) {                // << ОСТАВЛЯЕМ только верхнее поле
+    for (int j = 0; j < 1; j++) { // <-- было j < 3
       int y = startYf + j * (fieldH + fieldGap);
       midiFields[t + 3][j] = cp5.addTextfield("midi" + (t + 3) + "_" + j)
         .setPosition(fieldX, y)
@@ -275,6 +275,7 @@ void setup() {
         .hide();
     }
   }
+
 
 
   // === НОВОЕ: по одному выпадающему справа от каждого квадрата (уровень первого поля) ===
@@ -575,10 +576,8 @@ void controlEvent(ControlEvent event) {
       }
       // 2) текстовые поля у квадратов 3–6
       for (int i = 3; i < 7; i++) {
-        for (int j = 0; j < 3; j++) {
-          if (midiFields[i][j] != null) {
-            midiFields[i][j].show();
-          }
+        for (int j = 0; j < 1; j++) {
+          if (midiFields[i][j] != null) midiFields[i][j].show();
         }
       }
       // 3) НОВОЕ — показать правые выпадающие (по одному на квадрат)
@@ -637,10 +636,11 @@ void controlEvent(ControlEvent event) {
       }
       // Показать текстовые поля в квадратах 3–6
       for (int i = 3; i < 7; i++) {
-        for (int j = 0; j < 3; j++) {
+        for (int j = 0; j < 1; j++) {
           if (midiFields[i][j] != null) midiFields[i][j].show();
         }
       }
+
       // НОВОЕ — показать правые выпадающие (по одному на квадрат)
       for (int t = 0; t < 4; t++) {
         if (rectDrop[t] != null) rectDrop[t].show().bringToFront();
