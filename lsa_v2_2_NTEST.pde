@@ -275,6 +275,29 @@ void setup() {
         .hide();
     }
   }
+  // --- MSC списки (по одному над каждым нижним квадратом) ---
+  for (int k = 0; k < 4; k++) {
+    float dx = squareX[k] + 5;               // немного отступить от левого края квадрата
+    float dy = squareY + (squareSize - 20) / 2;
+    int   listW = squareSize - 10;           // ширина бара ≈ ширина квадрата - поля
+  
+    mscList[k] = cp5.addScrollableList("msc" + k)
+      .setPosition(dx, dy)
+      .setSize(listW, 120)
+      .setBarHeight(30)
+      .setItemHeight(25)
+      .setLabel("")
+      .hide();
+  
+    // Набор пунктов как в приложении
+    mscList[k].addItem("GO", 0);
+    mscList[k].addItem("STOP", 1);
+    mscList[k].addItem("P/R", 2);
+    mscList[k].addItem("PREVIEW", 3);
+  
+    mscList[k].setValue(0);
+    mscList[k].close();
+  }
 
   // === НОВОЕ: по одному выпадающему справа от каждого квадрата (уровень первого поля) ===
   int ddW = 40;     // ширина бара
@@ -647,9 +670,9 @@ void controlEvent(ControlEvent event) {
     } 
     else if (sub == 1) {
       for (ScrollableList s : mscList) {
-        if (s != null) s.show();
+        if (s != null) s.show().bringToFront();
       }
-    } 
+    }
     else if (sub == 2) {
       saveRTP(rtpIndex);
       rtpSelect.show().bringToFront();
