@@ -264,8 +264,8 @@ void setup() {
   for (int t = 0; t < 4; t++) {
     int fieldX = int(squareX[t]);
     int startYf = int(squareY);
-  
-    for (int j = 0; j < 1; j++) { // <-- было j < 3
+
+    for (int j = 0; j < 3; j++) {
       int y = startYf + j * (fieldH + fieldGap);
       midiFields[t + 3][j] = cp5.addTextfield("midi" + (t + 3) + "_" + j)
         .setPosition(fieldX, y)
@@ -275,8 +275,6 @@ void setup() {
         .hide();
     }
   }
-
-
 
   // === НОВОЕ: по одному выпадающему справа от каждого квадрата (уровень первого поля) ===
   int ddW = 40;     // ширина бара
@@ -576,8 +574,10 @@ void controlEvent(ControlEvent event) {
       }
       // 2) текстовые поля у квадратов 3–6
       for (int i = 3; i < 7; i++) {
-        for (int j = 0; j < 1; j++) {
-          if (midiFields[i][j] != null) midiFields[i][j].show();
+        for (int j = 0; j < 3; j++) {
+          if (midiFields[i][j] != null) {
+            midiFields[i][j].show();
+          }
         }
       }
       // 3) НОВОЕ — показать правые выпадающие (по одному на квадрат)
@@ -636,11 +636,10 @@ void controlEvent(ControlEvent event) {
       }
       // Показать текстовые поля в квадратах 3–6
       for (int i = 3; i < 7; i++) {
-        for (int j = 0; j < 1; j++) {
+        for (int j = 0; j < 3; j++) {
           if (midiFields[i][j] != null) midiFields[i][j].show();
         }
       }
-
       // НОВОЕ — показать правые выпадающие (по одному на квадрат)
       for (int t = 0; t < 4; t++) {
         if (rectDrop[t] != null) rectDrop[t].show().bringToFront();
@@ -846,30 +845,23 @@ void sendParameters() {
       }
 
       // === Старая отправка midi0..midi6 (верх и поля у квадратов) ===
-  for (int i = 0; i < 7; i++) {
-    StringBuilder sb = new StringBuilder("midi" + i);
-    for (int j = 0; j < 3; j++) {
-      Controller<?> ctrl = cp5.getController("midi_left_" + i + "_" + j);
-  
-      if (ctrl instanceof ScrollableList) {
-        float selVal = ((ScrollableList) ctrl).getValue();
-        sb.append(",").append((int) selVal);
-      } else {
-        String val = "0";
-        if (midiFields[i][j] != null) {
-          String tval = midiFields[i][j].getText();
-          if (tval != null && tval.trim().length() > 0) {
-            val = tval.trim();
+      for (int i = 0; i < 7; i++) {
+        StringBuilder sb = new StringBuilder("midi" + i);
+        for (int j = 0; j < 3; j++) {
+          Controller<?> ctrl = cp5.getController("midi_left_" + i + "_" + j);
+          if (ctrl instanceof ScrollableList) {
+            float selVal = ((ScrollableList) ctrl).getValue();
+            sb.append(",").append((int)selVal);
+          } else {
+            String val = midiFields[i][j].getText().trim();
+            if (val.isEmpty()) val = "0";
+            sb.append(",").append(val);
           }
         }
-        sb.append(",").append(val);
+        String msg = sb.toString() + "\n";
+        safeWrite(msg);
+        println("Sent: " + msg.trim());
       }
-    }
-    String msg = sb.toString() + "\n";
-    safeWrite(msg);
-    println("Sent: " + msg.trim());
-  }
-
 
       // === НОВОЕ: отправка правых дропдаунов у квадратов ===
       // Формат: "midiRight{3..6},val"
