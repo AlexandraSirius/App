@@ -39,8 +39,8 @@ String[] rtpSaved = new String[6];
 String[] oscSaved = new String[6]; 
 // массивы для хранения сохранённых RTP/OSC строк (по 6 штук)
 
-ScrollableList[][] midiLeft = new ScrollableList[3][3]; 
-// 3×3 выпадающих списков слева (верхняя таблица MIDI)
+ScrollableList[][] midiLeft = new ScrollableList[3][1];
+// 3×1 выпадающих списков слева (верхняя таблица MIDI)
 
 // НОВОЕ: по одному выпадающему для каждого нижнего прямоугольника (0..7)
 ScrollableList[] rectDrop = new ScrollableList[4];
@@ -83,61 +83,11 @@ int rtpIndex = 0, oscIndex = 0;
 void settings() {
   size(800, 600);
 }
-
-// =================== MIDI: «лестница» только для верхней 3×3 ===================
+// =================== MIDI: «одна строка, три столбца» ===================
 void enforceSingleOpenMidiList() {
-  ScrollableList openOne = null;
-  int openRow = -1; // 0..2
-  int openCol = -1; // 0..2
-
-  // 1) Ищем единственный открытый список только в верхней 3x3 (midiLeft)
+  // разрешаем открываться любому из трёх; скрывать ниже больше не нужно — ряд один
   for (int c = 0; c < 3; c++) {
-    for (int r = 0; r < 3; r++) {
-      ScrollableList sl = (midiLeft[c][r] != null) ? midiLeft[c][r] : null;
-      if (sl != null && sl.isOpen()) {
-        if (openOne == null) {
-          openOne = sl;
-          openCol = c;
-          openRow = r;
-        } else {
-          sl.close();
-        }
-      }
-    }
-  }
-
-  // 2) База: всё показать (ничего не открыто — всё видно)
-  for (int c = 0; c < 3; c++) {
-    for (int r = 0; r < 3; r++) {
-      if (midiLeft[c][r] != null) midiLeft[c][r].show();
-    }
-  }
-  for (int r = 0; r < 3; r++) {
-    for (int k = 0; k < 3; k++) {
-      if (midiInline[r][k] != null) midiInline[r][k].show();
-    }
-  }
-
-  // 3) «Лесенка»: прячем ТОЛЬКО элементы ниже в том же столбце верхней сетки
-  if (openOne != null) {
-    for (int r = openRow + 1; r < 3; r++) {
-      if (midiLeft[openCol][r] != null) midiLeft[openCol][r].hide();
-    }
-    // Пересчитать видимость inline-полей построчно
-    for (int row = 0; row < 3; row++) {
-      boolean rowVisible = false;
-      for (int col = 0; col < 3; col++) {
-        if (midiLeft[col][row] != null && midiLeft[col][row].isVisible()) {
-          rowVisible = true; break;
-        }
-      }
-      for (int k = 0; k < 3; k++) {
-        if (midiInline[row][k] != null) {
-          if (rowVisible) midiInline[row][k].show();
-          else           midiInline[row][k].hide();
-        }
-      }
-    }
+    if (midiLeft[c][0] != null) midiLeft[c][0].show();
   }
 }
 
@@ -186,39 +136,37 @@ void setup() {
   picker3 = cp5.addColorWheel("p3").setPosition(startX + 2 * (circleSize + spacing), yPos).setLabel("").hide();
   picker4 = cp5.addColorWheel("p4").setPosition(startX + 3 * (circleSize + spacing), yPos).setLabel("").hide();
 
-  // --- Верхняя 3×3 сетка MIDI ---
+  // --- Верхняя 3×1 сетка MIDI (по одному списку в каждом из 3 столбцов) ---
   int fieldW = 40;
   int fieldH = 30;
   int centerX = width / 2;
   int centerY = height / 2;
-  int fieldGapX = fieldW;  // чтобы влезли inline
-  int fieldGapY = 12;
+  int fieldGapX = fieldW;  // расстояние между столбцами
+  int fieldGapY = 12;      // теперь не важен, т.к. ряд один
   int totalWidth = 3 * fieldW + 2 * fieldGapX;
-  int totalHeight = 3 * fieldH + 2 * fieldGapY;
-  int gridShiftLeft = 20;                     // сдвиг влево как в исходнике
-  int startX_left   = centerX - totalWidth / 2 - gridShiftLeft;
-  int startY_left   = centerY - totalHeight / 2;
+  int totalHeight = fieldH; // один ряд
+  int gridShiftLeft = 20;   // как было
+  int startX_left = centerX - totalWidth / 2 - gridShiftLeft;
+  int startY_left = centerY - totalHeight / 2;
 
+  // создаём только по одному списку на столбец (j=0)
   for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      int x = startX_left + i * (fieldW + fieldGapX);
-      int y = startY_left + j * (fieldH + fieldGapY);
+    int x = startX_left + i * (fieldW + fieldGapX);
+    int y = startY_left;
 
-      midiLeft[i][j] = cp5.addScrollableList("midi_left_" + i + "_" + j)
-        .setPosition(x, y)
-        .setSize(fieldW, 120)   // ширина — как у msc, высота раскрытия — 120
-        .setBarHeight(30)
-        .setItemHeight(25)
-        .setLabel("")
-        .hide(); // по умолчанию скрыт
+    midiLeft[i][0] = cp5.addScrollableList("midi_left_" + i + "_0")
+      .setPosition(x, y)
+      .setSize(fieldW, 120)
+      .setBarHeight(30)
+      .setItemHeight(25)
+      .setLabel("")
+      .hide();
 
-      // Заполняем числами от 0 до 7
-      for (int val = 0; val <= 7; val++) midiLeft[i][j].addItem(str(val), val);
-
-      midiLeft[i][j].setValue(0);  // по умолчанию выбран «0»
-      midiLeft[i][j].close();      // и сразу закрыт
-    }
+    for (int val = 0; val <= 7; val++) midiLeft[i][0].addItem(str(val), val);
+    midiLeft[i][0].setValue(0);
+    midiLeft[i][0].close();
   }
+
 
   // --- Inline поля (между колонками 3×3) ---
   int rows = 3;
@@ -586,15 +534,14 @@ void controlEvent(ControlEvent event) {
       midiSubList.setValue(0);
       midiSubList.setBroadcast(true);
 
-      // 1) верхняя 3×3
+      // 1) верхняя 3×1
       for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-          if (midiLeft[i][j] != null) {
-            midiLeft[i][j].show().bringToFront();
-            midiLeft[i][j].close(); // стартуем закрытыми, как и поля
-          }
+        if (midiLeft[i][0] != null) {
+          midiLeft[i][0].show().bringToFront();
+          midiLeft[i][0].close();
         }
       }
+
       // 2) текстовые поля у квадратов 3–6
       for (int i = 3; i < 7; i++) {
         for (int j = 0; j < 3; j++) {
@@ -645,29 +592,27 @@ void controlEvent(ControlEvent event) {
     mainMenu.bringToFront();
 
     if (sub == 0) {
-      // Показать 3×3 выпадающих списков слева (midiLeft)
-      for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-          if (midiLeft[i][j] != null) midiLeft[i][j].show().bringToFront();
+        // Показать 3×1 выпадающих списков слева (только j=0)
+        for (int i = 0; i < 3; i++) {
+          if (midiLeft[i][0] != null) midiLeft[i][0].show().bringToFront();
         }
-      }
-      // Показать межколоночные поля (и правое боковое)
-      for (int row = 0; row < 3; row++) {
-        for (int k = 0; k < 3; k++) {
-          if (midiInline[row][k] != null) midiInline[row][k].show().bringToFront();
+        // Показать межколоночные поля (если используешь)
+        for (int row = 0; row < 3; row++) {
+          for (int k = 0; k < 3; k++) {
+            if (midiInline[row][k] != null) midiInline[row][k].show().bringToFront();
+          }
         }
-      }
-      // Показать текстовые поля в квадратах 3–6
-      for (int i = 3; i < 7; i++) {
-        for (int j = 0; j < 3; j++) {
-          if (midiFields[i][j] != null) midiFields[i][j].show();
+        // Показать текстовые поля в квадратах 3–6
+        for (int i = 3; i < 7; i++) {
+          for (int j = 0; j < 3; j++) {
+            if (midiFields[i][j] != null) midiFields[i][j].show();
+          }
         }
-      }
-      // НОВОЕ — показать правые выпадающие (по одному на квадрат)
-      for (int t = 0; t < 4; t++) {
-        if (rectDrop[t] != null) rectDrop[t].show().bringToFront();
-      }
-    } 
+        // Правые дропдауны у квадратов
+        for (int t = 0; t < 4; t++) {
+          if (rectDrop[t] != null) rectDrop[t].show().bringToFront();
+        }
+    }
     else if (sub == 1) {
       for (ScrollableList s : mscList) {
         if (s != null) s.show().bringToFront();
@@ -743,10 +688,9 @@ void controlEvent(ControlEvent event) {
 
 void hideAll() {
   for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      if (midiLeft[i][j] != null) midiLeft[i][j].hide();
-    }
+    if (midiLeft[i][0] != null) midiLeft[i][0].hide();
   }
+
   for (int row = 0; row < 3; row++) {
     for (int k = 0; k < 3; k++) {
       if (midiInline[row][k] != null) midiInline[row][k].hide();
@@ -868,19 +812,31 @@ void sendParameters() {
       }
 
       // === Старая отправка midi0..midi6 (верх и поля у квадратов) ===
-      for (int i = 0; i < 7; i++) {
+      // Формат оставляем прежним: "midi{i},a,b,c"
+      // a берём из выпадающего "midi_left_i_0", b и c — из полей, если их нет — "0".
+      for (int i = 0; i < 3; i++) {
         StringBuilder sb = new StringBuilder("midi" + i);
-        for (int j = 0; j < 3; j++) {
-          Controller<?> ctrl = cp5.getController("midi_left_" + i + "_" + j);
-          if (ctrl instanceof ScrollableList) {
-            float selVal = ((ScrollableList) ctrl).getValue();
-            sb.append(",").append((int)selVal);
-          } else {
-            String val = midiFields[i][j].getText().trim();
-            if (val.isEmpty()) val = "0";
-            sb.append(",").append(val);
-          }
+
+        // a: значение выпадающего списка (обязательно)
+        int a = 0;
+        Controller<?> ctrl = cp5.getController("midi_left_" + i + "_0");
+        if (ctrl instanceof ScrollableList) {
+          a = (int)((ScrollableList)ctrl).getValue();
         }
+        sb.append(",").append(a);
+
+        // b и c: если есть соответствующие поля — берём, иначе "0"
+        for (int j = 1; j <= 2; j++) {
+          String val = "0";
+          try {
+            if (midiFields[i][j] != null) {
+              String t = midiFields[i][j].getText().trim();
+              if (t.length() > 0) val = t;
+            }
+          } catch(Exception ignore){}
+          sb.append(",").append(val);
+        }
+
         String msg = sb.toString() + "\n";
         safeWrite(msg);
         println("Sent: " + msg.trim());
