@@ -825,55 +825,45 @@ void sendParameters() {
     int midiSub = (int) midiSubList.getValue();
 
     if (midiSub == 0) {
-      // === ДОБАВЛЕНО: отправка полей между списками (midiInline) построчно
-      // Формат: "midiInline0,a,b,c", "midiInline1,a,b,c", "midiInline2,a,b,c"
-      for (int row = 0; row < 3; row++) {
-        StringBuilder sbI = new StringBuilder("midiInline" + row);
-        for (int k = 0; k < 3; k++) {
-          String val = (midiInline[row][k] != null) ? midiInline[row][k].getText().trim() : "";
-          if (val.isEmpty()) val = "0";  // дефолт, чтобы не отправлять пустое
-          sbI.append(",").append(val);
+      // === ИЗМЕНЕНО: новый формат отправки для MIDI ===
+      // Формат: midi{номер элемента},{окно1},{окно2},{окно3},{значение из списка}
+      
+      // Для элементов 0-2 (верхние)
+      for (int i = 0; i < 3; i++) {
+        String w1 = (midiInline[i][0] != null) ? midiInline[i][0].getText().trim() : "0";
+        String w2 = (midiInline[i][1] != null) ? midiInline[i][1].getText().trim() : "0";
+        String w3 = (midiInline[i][2] != null) ? midiInline[i][2].getText().trim() : "0";
+        if (w1.isEmpty()) w1 = "0";
+        if (w2.isEmpty()) w2 = "0";
+        if (w3.isEmpty()) w3 = "0";
+        
+        int sel = 0;
+        if (midiLeft[i][0] != null) {
+          sel = (int)midiLeft[i][0].getValue();
         }
-        String msgI = sbI.toString() + "\n";
-        safeWrite(msgI);
-        println("Sent: " + msgI.trim());
+        
+        String line = "midi" + i + "," + w1 + "," + w2 + "," + w3 + "," + sel + "\n";
+        safeWrite(line);
+        println("Sent: " + line.trim());
       }
-
-      // === Обновленная отправка midi0..midi6 (верх и поля у квадратов) ===
-      for (int i = 0; i < 7; i++) {
-        StringBuilder sb = new StringBuilder("midi" + i);
-        for (int j = 0; j < 3; j++) {
-          // Для первых трех элементов (0,1,2) используем выпадающие списки
-          if (i < 3 && j == 0) {
-            Controller<?> ctrl = cp5.getController("midi_left_" + i + "_0");
-            if (ctrl instanceof ScrollableList) {
-              float selVal = ((ScrollableList) ctrl).getValue();
-              sb.append(",").append((int)selVal);
-            } else {
-              sb.append(",0"); // значение по умолчанию
-            }
-          } else {
-            // Для остальных используем текстовые поля
-            String val = midiFields[i][j].getText().trim();
-            if (val.isEmpty()) val = "0";
-            sb.append(",").append(val);
-          }
+      
+      // Для элементов 3-6 (нижние)
+      for (int i = 3; i < 7; i++) {
+        String w1 = (midiFields[i][0] != null) ? midiFields[i][0].getText().trim() : "0";
+        String w2 = (midiFields[i][1] != null) ? midiFields[i][1].getText().trim() : "0";
+        String w3 = (midiFields[i][2] != null) ? midiFields[i][2].getText().trim() : "0";
+        if (w1.isEmpty()) w1 = "0";
+        if (w2.isEmpty()) w2 = "0";
+        if (w3.isEmpty()) w3 = "0";
+        
+        int sel = 0;
+        if (rectDrop[i-3] != null) {
+          sel = (int)rectDrop[i-3].getValue();
         }
-        String msg = sb.toString() + "\n";
-        safeWrite(msg);
-        println("Sent: " + msg.trim());
-      }
-
-      // === НОВОЕ: отправка правых дропдаунов у квадратов ===
-      // Формат: "midiRight{3..6},val"
-      for (int t = 0; t < 4; t++) {
-        int v = 0;
-        if (rectDrop[t] != null) {
-          try { v = (int)rectDrop[t].getValue(); } catch (Exception e) {}
-        }
-        String msgR = "midiRight" + (t + 3) + "," + v + "\n";
-        safeWrite(msgR);
-        println("Sent: " + msgR.trim());
+        
+        String line = "midi" + i + "," + w1 + "," + w2 + "," + w3 + "," + sel + "\n";
+        safeWrite(line);
+        println("Sent: " + line.trim());
       }
 
     } else if (midiSub == 1) {
